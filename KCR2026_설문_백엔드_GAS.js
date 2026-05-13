@@ -51,6 +51,13 @@ function addMissingColumns() {
   Logger.log(msg);
 }
 
+// ── 에디터에서 직접 실행: 대시보드+차트 즉시 갱신 ──────────────
+// 사용법: 에디터 상단 함수 선택에서 runDashboard 선택 후 실행
+function runDashboard() {
+  updateSurveyDashboard_();
+  Logger.log('대시보드/차트 갱신 완료');
+}
+
 // ── GET 요청: 연결 테스트 ─────────────────────────────────────
 function doGet(e) {
   return ContentService
