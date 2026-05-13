@@ -911,7 +911,7 @@ const VIEWS = {
           : `<button class="btn-primary" id="btn-claim" style="background:#FF9500;margin-top:0">${S.lang==='en' ? 'Collect Gift' : '기념품 수령 처리'}</button>`
         }
       </div>` : ''}
-      <button class="btn-primary" id="btn-new" style="background:#fff;color:#8E8E93;border:0.5px solid #E5E5EA">${t('btn_new')}</button>
+      ${S.respondent !== 'foreign' ? `<button class="btn-primary" id="btn-new" style="background:#fff;color:#8E8E93;border:0.5px solid #E5E5EA">${t('btn_new')}</button>` : ''}
     </div>
     <!-- PIN 입력 모달 -->
     <div id="pin-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);align-items:center;justify-content:center;z-index:150">
@@ -948,27 +948,35 @@ function bindEvents() {
   const btnSubmit = g('btn-submit');
   if (btnSubmit) btnSubmit.onclick = () => { saveInputs(); if (validate(7)) submitSurvey(); };
 
-  // New survey (PIN protected - staff only)
+  // New survey (domestic only - no PIN needed, foreign hides this button)
   const btnNew = g('btn-new');
   if (btnNew) btnNew.onclick = () => {
-    pinPurpose = 'new';
-    const modal = g('pin-modal');
-    if (modal) { modal.style.display = 'flex'; const pi = g('pin-input'); if (pi) { pi.value=''; pi.focus(); } }
+    localStorage.removeItem('kcr2026_survey_submitted');
+    S = { step: 0, lang: 'ko', respondent: '',
+      q1:'', q2:'', q3:'', q4:0, q5:'',
+      q6:'', q7:[], q8:0,
+      q9_1:0, q9_2:0, q9_3:0, q9_4:0, q9_5:0, q10:0,
+      q11:'', q12:'', q13:0, q14:'',
+      q15:0, q16:0, q17:0, q18:0, q19:0, q20:0,
+      q21:0, q22:0, q23:'',
+      q24:'', q25:0, q26:0, q27:'',
+      prize_name:'', prize_phone:'',
+      privacy: false, submitted: false, submittedTs: '', prizeClaimed: false };
+    render();
   };
 
   // 기념품 수령 버튼 (해외 전용)
   const btnClaim = g('btn-claim');
   if (btnClaim) btnClaim.onclick = () => {
-    pinPurpose = 'claim';
     const modal = g('pin-modal');
     if (modal) { modal.style.display = 'flex'; const pi = g('pin-input'); if (pi) { pi.value=''; pi.focus(); } }
   };
   const pinCancel = g('pin-cancel');
   if (pinCancel) pinCancel.onclick = () => { const m = g('pin-modal'); if (m) m.style.display = 'none'; };
   const pinConfirm = g('pin-confirm');
-  if (pinConfirm) pinConfirm.onclick = () => { if (pinPurpose === 'new') resetSurvey(); else claimPrize(); };
+  if (pinConfirm) pinConfirm.onclick = () => claimPrize();
   const pinInput = g('pin-input');
-  if (pinInput) pinInput.onkeydown = e => { if (e.key === 'Enter') { if (pinPurpose === 'new') resetSurvey(); else claimPrize(); } };
+  if (pinInput) pinInput.onkeydown = e => { if (e.key === 'Enter') claimPrize(); };
 
   // Step 0: respondent type
   document.querySelectorAll('[data-resp]').forEach(el => {
@@ -1113,29 +1121,8 @@ async function submitSurvey() {
   }
 }
 
-// ── 직원 PIN 처리 ─────────────────────────────────────────────
-const STAFF_PIN = '4025';
-let pinPurpose = 'claim';  // 'claim' | 'new'
-
-function resetSurvey() {
-  const pin = (g('pin-input') ? g('pin-input').value : '').trim();
-  if (pin !== STAFF_PIN) { showToast(S.lang==='en' ? 'Incorrect PIN' : 'PIN이 올바르지 않습니다'); return; }
-  g('pin-modal').style.display = 'none';
-  localStorage.removeItem('kcr2026_survey_submitted');
-  S = { step: 0, lang: 'ko', respondent: '',
-    q1:'', q2:'', q3:'', q4:0, q5:'',
-    q6:'', q7:[], q8:0,
-    q9_1:0, q9_2:0, q9_3:0, q9_4:0, q9_5:0, q10:0,
-    q11:'', q12:'', q13:0, q14:'',
-    q15:0, q16:0, q17:0, q18:0, q19:0, q20:0,
-    q21:0, q22:0, q23:'',
-    q24:'', q25:0, q26:0, q27:'',
-    prize_name:'', prize_phone:'',
-    privacy: false, submitted: false, submittedTs: '', prizeClaimed: false };
-  render();
-}
-
 // ── 기념품 수령 처리 (해외 전용, 직원 PIN 확인) ──────────────
+const STAFF_PIN = '4025';
 async function claimPrize() {
   const pin = (g('pin-input') ? g('pin-input').value : '').trim();
   if (pin !== STAFF_PIN) { showToast(S.lang==='en' ? 'Incorrect PIN' : 'PIN이 올바르지 않습니다'); return; }
