@@ -238,16 +238,15 @@ const T = {
 
   // Q2
   q2: { ko: '2. KCR 참석 횟수 (금번 포함)', en: '2. Number of KCR attendances (including this year)' },
-  q2_1: { ko: '1회 (처음)', en: '1st time' },
-  q2_2: { ko: '2~3회', en: '2-3 times' },
-  q2_3: { ko: '4~5회', en: '4-5 times' },
-  q2_4: { ko: '6~10회', en: '6-10 times' },
-  q2_5: { ko: '11회 이상', en: '11+ times' },
+  q2_1: { ko: '처음', en: '1st time' },
+  q2_2: { ko: '2-3회', en: '2-3 times' },
+  q2_3: { ko: '4-5회', en: '4-5 times' },
+  q2_4: { ko: '6회 이상', en: '6+ times' },
 
   // Q3
   q3: { ko: '3. 본 행사를 어떤 경로를 통해 인지하셨습니까?', en: '3. How did you first learn about this event?' },
-  q3_news:  { ko: '뉴스레터', en: 'Newsletter' },
-  q3_web:   { ko: '홈페이지 공지', en: 'Website' },
+  q3_news:  { ko: '학회 홈페이지', en: 'Society Website' },
+  q3_web:   { ko: '이메일', en: 'Email' },
   q3_peer:  { ko: '동료 권유', en: 'Colleague' },
   q3_etc:   { ko: '기타', en: 'Other' },
 
@@ -415,7 +414,7 @@ const T = {
 // Q1 options mapping (data-key → T key)
 // ============================================================
 const Q1_OPTS = ['prof','spec','fell','res','nurse','rsch','stud','corp','etc'];
-const Q2_OPTS = ['1','2','3','4','5'];
+const Q2_OPTS = ['1','2','3','4'];
 const Q3_OPTS = ['news','web','peer','etc'];
 
 // ============================================================
@@ -435,7 +434,9 @@ let S = {
   q24: '', q25: 0, q26: 0, q27: '',
   prize_name: '', prize_phone: '',
   privacy: false,
-  submitted: false
+  submitted: false,
+  submittedTs: '',
+  prizeClaimed: false
 };
 
 // ============================================================
@@ -498,8 +499,15 @@ function checkSubmitted() {
   try { const d = localStorage.getItem('kcr2026_survey_submitted'); if (d) return JSON.parse(d); } catch(e) {}
   return null;
 }
-function markSubmitted() {
-  localStorage.setItem('kcr2026_survey_submitted', JSON.stringify({ ts: new Date().toISOString(), respondent: S.respondent }));
+function markSubmitted(ts) {
+  localStorage.setItem('kcr2026_survey_submitted', JSON.stringify({ ts: ts || new Date().toISOString(), respondent: S.respondent, prizeClaimed: false }));
+}
+function markPrizeClaimed() {
+  try {
+    const d = JSON.parse(localStorage.getItem('kcr2026_survey_submitted') || '{}');
+    d.prizeClaimed = true;
+    localStorage.setItem('kcr2026_survey_submitted', JSON.stringify(d));
+  } catch(e) {}
 }
 
 // ============================================================
@@ -507,7 +515,12 @@ function markSubmitted() {
 // ============================================================
 window.onload = () => {
   const prev = checkSubmitted();
-  if (prev) { S.submitted = true; S.respondent = prev.respondent || ''; }
+  if (prev) {
+    S.submitted     = true;
+    S.respondent    = prev.respondent   || '';
+    S.submittedTs   = prev.ts           || '';
+    S.prizeClaimed  = prev.prizeClaimed || false;
+  }
   if (!GAS) { g('setup-screen').style.display = 'block'; }
   else { g('main-app').style.display = 'block'; render(); }
 };
@@ -881,7 +894,28 @@ const VIEWS = {
           ${S.respondent === 'domestic' ? t('success_prize_domestic') : t('success_prize_foreign')}
         </div>
       </div>
+      ${S.respondent === 'foreign' ? `
+      <div class="card" style="margin-bottom:10px">
+        <div class="card-label" style="margin-bottom:8px">STAFF ONLY - 기념품 수령 처리</div>
+        ${S.prizeClaimed
+          ? '<div style="text-align:center;padding:10px;color:#34C759;font-weight:700;font-size:15px">✓ 기념품 수령 완료</div>'
+          : '<button class="btn-primary" id="btn-claim" style="background:#FF9500;margin-top:0">기념품 수령 처리</button>'
+        }
+      </div>` : ''}
       <button class="btn-primary" id="btn-new" style="background:#fff;color:#8E8E93;border:0.5px solid #E5E5EA">${t('btn_new')}</button>
+    </div>
+    <!-- PIN 입력 모달 -->
+    <div id="pin-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);align-items:center;justify-content:center;z-index:150">
+      <div style="background:#fff;border-radius:16px;padding:24px 20px;width:280px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.2)">
+        <div style="font-size:16px;font-weight:700;margin-bottom:4px">직원 확인 코드 입력</div>
+        <div style="font-size:12px;color:#8E8E93;margin-bottom:14px">담당 직원만 수령 처리할 수 있습니다</div>
+        <input type="password" id="pin-input" placeholder="PIN" inputmode="numeric" maxlength="6"
+          style="width:100%;padding:10px 12px;border:1px solid #E5E5EA;border-radius:8px;font-size:18px;text-align:center;letter-spacing:6px;margin-bottom:14px;font-family:inherit;outline:none">
+        <div style="display:flex;gap:8px">
+          <button id="pin-cancel" style="flex:1;padding:12px;background:#F2F2F7;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">취소</button>
+          <button id="pin-confirm" style="flex:2;padding:12px;background:#185FA5;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">확인</button>
+        </div>
+      </div>
     </div>
   `
 };
@@ -918,9 +952,22 @@ function bindEvents() {
       q21:0, q22:0, q23:'',
       q24:'', q25:0, q26:0, q27:'',
       prize_name:'', prize_phone:'',
-      privacy: false, submitted: false };
+      privacy: false, submitted: false, submittedTs: '', prizeClaimed: false };
     render();
   };
+
+  // 기념품 수령 버튼 (해외 전용)
+  const btnClaim = g('btn-claim');
+  if (btnClaim) btnClaim.onclick = () => {
+    const modal = g('pin-modal');
+    if (modal) { modal.style.display = 'flex'; const pi = g('pin-input'); if (pi) { pi.value=''; pi.focus(); } }
+  };
+  const pinCancel = g('pin-cancel');
+  if (pinCancel) pinCancel.onclick = () => { const m = g('pin-modal'); if (m) m.style.display = 'none'; };
+  const pinConfirm = g('pin-confirm');
+  if (pinConfirm) pinConfirm.onclick = () => claimPrize();
+  const pinInput = g('pin-input');
+  if (pinInput) pinInput.onkeydown = e => { if (e.key === 'Enter') claimPrize(); };
 
   // Step 0: respondent type
   document.querySelectorAll('[data-resp]').forEach(el => {
@@ -973,11 +1020,11 @@ function resolveQ1(key) {
   return map[key] || key;
 }
 function resolveQ2(key) {
-  const map = { '1':'1회(처음)', '2':'2~3회', '3':'4~5회', '4':'6~10회', '5':'11회 이상' };
+  const map = { '1':'처음', '2':'2-3회', '3':'4-5회', '4':'6회 이상' };
   return map[key] || key;
 }
 function resolveQ3(key) {
-  const map = { news:'뉴스레터', web:'홈페이지', peer:'동료권유', etc:'기타' };
+  const map = { news:'학회홈페이지', web:'이메일', peer:'동료권유', etc:'기타' };
   return map[key] || key;
 }
 function resolveQ6(key) {
@@ -1037,18 +1084,78 @@ async function submitSurvey() {
   };
 
   try {
-    await fetch(GAS, {
-      method: 'POST', mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(payload)
-    });
-    markSubmitted();
+    let submittedTs = payload.timestamp;
+    try {
+      const res  = await fetch(GAS, {
+        method: 'POST', mode: 'cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload)
+      });
+      const json = await res.json();
+      if (json.ts) submittedTs = json.ts;
+    } catch(_) {
+      // CORS 실패 시 no-cors 폴백 (응답 읽기 불가)
+      await fetch(GAS, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload)
+      });
+    }
+    S.submittedTs = submittedTs;
+    markSubmitted(submittedTs);
     S.submitted = true;
     showOverlay(false);
     render();
   } catch(e) {
     showOverlay(false);
     showToast(t('submit_error'));
+  }
+}
+
+// ── 기념품 수령 처리 (해외 전용, 직원 PIN 확인) ──────────────
+const STAFF_PIN = '4025';
+
+async function claimPrize() {
+  const pin = (g('pin-input') ? g('pin-input').value : '').trim();
+  if (pin !== STAFF_PIN) { showToast('PIN이 올바르지 않습니다'); return; }
+
+  g('pin-modal').style.display = 'none';
+  showOverlay(true);
+  g('spinner-msg').textContent = '처리 중...';
+
+  try {
+    const payload = {
+      type: 'prize_claim',
+      ts:   S.submittedTs,
+      name: S.prize_name
+    };
+    let result = { status: 'ok' };
+    try {
+      const res = await fetch(GAS, {
+        method: 'POST', mode: 'cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload)
+      });
+      result = await res.json();
+    } catch(_) {
+      await fetch(GAS, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload)
+      });
+    }
+
+    showOverlay(false);
+    if (result.status === 'already_claimed') {
+      showToast('이미 수령 처리된 응답입니다');
+    } else {
+      S.prizeClaimed = true;
+      markPrizeClaimed();
+      render();
+    }
+  } catch(e) {
+    showOverlay(false);
+    showToast('처리 중 오류가 발생했습니다');
   }
 }
 </script>
