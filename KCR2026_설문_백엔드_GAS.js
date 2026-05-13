@@ -48,7 +48,7 @@ function addMissingColumns() {
   const msg = missing.length > 0
     ? '추가된 컬럼: ' + missing.join(', ')
     : '누락 컬럼 없음 - 이미 최신 상태';
-  SpreadsheetApp.getUi().alert(msg);
+  Logger.log(msg);
 }
 
 // ── GET 요청: 연결 테스트 ─────────────────────────────────────
