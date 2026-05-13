@@ -895,6 +895,15 @@ const VIEWS = {
         </div>
       </div>
       ${S.respondent === 'foreign' ? `
+      <div style="background:#FFF3CD;border:1px solid #FFCA28;border-radius:10px;padding:14px 16px;margin-bottom:10px;text-align:center">
+        <div style="font-size:15px;font-weight:700;color:#7A5200;margin-bottom:4px">
+          ${S.lang === 'en' ? 'Please show this screen at the Registration Desk' : '등록 데스크에 이 화면을 보여주세요'}
+        </div>
+        <div style="font-size:12px;color:#8A6100;line-height:1.5">
+          ${S.lang === 'en' ? 'Collect your Rhumanyang keyring at the Registration Desk.' : '등록 데스크에서 류마냥 키링을 수령해 주세요.'}
+        </div>
+      </div>` : ''}
+      ${S.respondent === 'foreign' ? `
       <div class="card" style="margin-bottom:10px">
         <div class="card-label" style="margin-bottom:8px">STAFF ONLY - 기념품 수령 처리</div>
         ${S.prizeClaimed

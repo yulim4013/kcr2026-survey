@@ -452,4 +452,173 @@ function updateSurveyDashboard_() {
   }
   for (let c = 1; c <= opH.length; c++) opinSheet.setColumnWidth(c, 200);
   opinSheet.setFrozenRows(4);
+
+  // 차트 시트 생성
+  buildChartSheet_(ss, rows, headers);
+}
+
+// ── 통계 차트 시트 생성 ───────────────────────────────────────
+function buildChartSheet_(ss, rows, headers) {
+  if (rows.length === 0) return;
+  const col = name => headers.indexOf(name);
+
+  let cs = ss.getSheetByName("통계차트");
+  if (!cs) {
+    cs = ss.insertSheet("통계차트");
+  } else {
+    cs.clearContents();
+    cs.clearFormats();
+    cs.getCharts().forEach(c => cs.removeChart(c));
+  }
+
+  const BLUE  = "#185FA5";
+  const LBLUE = "#E6F1FB";
+  const GRAY  = "#F9F9F9";
+  let r = 1;
+
+  // 섹션 데이터(A-B열) + 차트(D열~) 삽입
+  // chartRows: 차트가 차지하는 예상 행 수 (겹침 방지)
+  function writeSection(title, labels, values, chartType, chartH) {
+    const h         = chartH || 240;
+    const chartRows = Math.ceil(h / 21) + 2;
+    const startRow  = r;
+
+    cs.getRange(r, 1).setValue(title)
+      .setFontWeight("bold").setFontColor(BLUE).setFontSize(11);
+    r++;
+
+    cs.getRange(r, 1, 1, 2).setValues([['항목', '건수']])
+      .setBackground(LBLUE).setFontWeight("bold");
+    r++;
+
+    labels.forEach((lbl, i) => {
+      cs.getRange(r, 1, 1, 2).setValues([[lbl, values[i]]])
+        .setBackground(i % 2 === 0 ? GRAY : "#FFFFFF");
+      r++;
+    });
+
+    // 차트: 헤더 + 데이터 범위
+    const chart = cs.newChart()
+      .setChartType(chartType)
+      .addRange(cs.getRange(startRow + 1, 1, labels.length + 1, 2))
+      .setPosition(startRow, 4, 0, 0)
+      .setOption('title', title)
+      .setOption('width', 420)
+      .setOption('height', h)
+      .setOption('legend', { position: labels.length <= 5 ? 'bottom' : 'none' })
+      .build();
+    cs.insertChart(chart);
+
+    r = Math.max(r + 1, startRow + chartRows);
+  }
+
+  // 1. 내국인 / 외국인
+  writeSection("내국인 / 외국인 비율",
+    ["내국인", "외국인"],
+    [rows.filter(x => x[col("응답자구분")] === "domestic").length,
+     rows.filter(x => x[col("응답자구분")] === "foreign").length],
+    Charts.ChartType.PIE);
+
+  // 2. 소속별 분포
+  const affs = ["대학교수","전문의","전임의","전공의","간호사","연구원","학생","기업관계자","기타"];
+  writeSection("소속별 분포", affs,
+    affs.map(a => rows.filter(x => x[col("소속직종")] === a).length),
+    Charts.ChartType.COLUMN, 280);
+
+  // 3. 참석 횟수
+  const q2opts = ["처음","2-3회","4-5회","6회 이상"];
+  writeSection("KCR 참석 횟수", q2opts,
+    q2opts.map(v => rows.filter(x => x[col("참석횟수")] === v).length),
+    Charts.ChartType.PIE);
+
+  // 4. 인지 경로
+  const q3opts = ["학회홈페이지","이메일","동료권유","기타"];
+  writeSection("행사 인지 경로", q3opts,
+    q3opts.map(v => rows.filter(x => x[col("인지경로")] === v).length),
+    Charts.ChartType.PIE);
+
+  // 5. 통역 경험
+  writeSection("인간 통역 경험", ["예","아니오"],
+    [rows.filter(x => x[col("통역경험")] === "예").length,
+     rows.filter(x => x[col("통역경험")] === "아니오").length],
+    Charts.ChartType.PIE);
+
+  // 6. AI 번역 이용 수단 (복수선택)
+  const q7opts = ["스크린자막","APP텍스트","APP음성","기타"];
+  writeSection("AI 번역 이용 수단 (복수선택)", q7opts,
+    q7opts.map(v => rows.filter(x => String(x[col("이용수단")]).includes(v)).length),
+    Charts.ChartType.COLUMN);
+
+  // 7. AI 번역 자막 인지 여부
+  const q6opts = ["예","아니오","몰랐음"];
+  writeSection("AI 번역 자막 인지 여부", q6opts,
+    q6opts.map(v => rows.filter(x => x[col("AI번역인지")] === v).length),
+    Charts.ChartType.PIE);
+
+  // 8. 스크린 번역 만족도
+  const q11opts = ["매우만족","만족","보통","불만족","매우불만족"];
+  writeSection("스크린 번역 도입 만족도", q11opts,
+    q11opts.map(v => rows.filter(x => x[col("스크린번역만족")] === v).length),
+    Charts.ChartType.COLUMN);
+
+  // 9. 가장 효과적인 방식
+  const q12opts = ["스크린자막","전용APP","음성번역","병행사용"];
+  writeSection("가장 효과적인 AI 번역 방식", q12opts,
+    q12opts.map(v => rows.filter(x => x[col("효과적방식")] === v).length),
+    Charts.ChartType.PIE);
+
+  // 10. 재참석 의향
+  const q24opts = ["예","아니오","미정"];
+  writeSection("내년 재참석 의향", q24opts,
+    q24opts.map(v => rows.filter(x => x[col("재참석의향")] === v).length),
+    Charts.ChartType.PIE);
+
+  // 11. 전반적 만족도 분포
+  writeSection("전반적 만족도 분포",
+    ["5점(매우만족)","4점","3점","2점","1점(매우불만족)"],
+    [5,4,3,2,1].map(v => rows.filter(x => parseInt(x[col("전반적만족도")]) === v).length),
+    Charts.ChartType.COLUMN);
+
+  // 12. 추천 의향 분포
+  writeSection("추천 의향 분포",
+    ["5점","4점","3점","2점","1점"],
+    [5,4,3,2,1].map(v => rows.filter(x => parseInt(x[col("추천의향NPS")]) === v).length),
+    Charts.ChartType.COLUMN);
+
+  // 13. 항목별 평균 점수 (가로 막대)
+  const likertDefs = [
+    ["AI친숙도",       "AI 기술 친숙도"],
+    ["APP편리성",      "APP 설치·접속 편리성"],
+    ["용어정확성",     "의학 용어 정확성"],
+    ["번역자연스러움", "번역 자연스러움"],
+    ["실시간성",       "실시간성(딜레이)"],
+    ["가독성",         "APP 텍스트 가독성"],
+    ["음성번역품질",   "음성 번역 품질"],
+    ["음성vs자막도움", "음성번역 도움도"],
+    ["AI지속찬성",     "AI 번역 지속 찬성"],
+    ["프로그램구성",   "학술 프로그램 구성"],
+    ["연자전문성",     "연자·좌장 전문성"],
+    ["등록절차",       "현장 등록 절차"],
+    ["APP공지",        "APP 프로그램 공지"],
+    ["전시홀",         "전시 홀 유익성"],
+    ["시설편의성",     "행사장 시설 편의성"],
+    ["식사품질",       "식사 품질"],
+    ["다과서비스",     "커피 브레이크"],
+    ["전반적만족도",   "전반적 만족도"],
+    ["추천의향NPS",    "추천 의향"]
+  ];
+  const avgLabels = likertDefs.map(p => p[1]);
+  const avgValues = likertDefs.map(p => {
+    const ci = col(p[0]);
+    const vs = rows.map(x => parseFloat(x[ci])).filter(v => !isNaN(v) && v > 0);
+    return vs.length > 0
+      ? parseFloat((vs.reduce((a, b) => a + b, 0) / vs.length).toFixed(2))
+      : 0;
+  });
+  writeSection("항목별 평균 점수 (5점 만점)", avgLabels, avgValues, Charts.ChartType.BAR, 580);
+
+  // 열 폭 조정
+  cs.setColumnWidth(1, 210);
+  cs.setColumnWidth(2, 70);
+  cs.setColumnWidth(3, 20);
 }
